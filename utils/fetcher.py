@@ -1,17 +1,31 @@
 import requests
 import os
 
-API_KEY = os.getenv("OMDB_API_KEY")
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
-def fetch_movie_info(title):
-    r = requests.get(f"http://www.omdbapi.com/?t={title}&apikey={API_KEY}")
-    if r.status_code != 200: return None
-    data = r.json()
-    if data.get("Response") == "False": return None
+def fetch_movie_info(query):
+    search_url = f"{TMDB_BASE_URL}/search/movie?query={query}&api_key={TMDB_API_KEY}&language=hi-IN"
+    response = requests.get(search_url)
+    if response.status_code != 200:
+        return "❌ API Error. Try again later."
+
+    results = response.json().get("results")
+    if not results:
+        return "😢 Koi result nahi mila."
+
+    movie = results[0]
+    movie_id = movie.get("id")
+    
+    # Get full movie info
+    detail_url = f"{TMDB_BASE_URL}/movie/{movie_id}?api_key={TMDB_API_KEY}&language=hi-IN"
+    detail = requests.get(detail_url).json()
+
     return (
-        f"🎬 *{data['Title']}* ({data['Year']})\n"
-        f"⭐ Rating: {data.get('imdbRating')}/10\n"
-        f"📅 Release: {data.get('Released')}\n"
-        f"🎭 Genre: {data.get('Genre')}\n"
-        f"🎙️ Plot: {data.get('Plot')}\n"
+        f"🎬 *{detail.get('title', 'N/A')}* ({detail.get('release_date', '')[:4]})\n"
+        f"⭐ Rating: {detail.get('vote_average', 'N/A')}/10\n"
+        f"📅 Release: {detail.get('release_date', 'N/A')}\n"
+        f"🎭 Genre: {', '.join([g['name'] for g in detail.get('genres', [])])}\n"
+        f"📝 Plot: {detail.get('overview', 'N/A')}\n"
+        f"🌐 TMDB Link: https://www.themoviedb.org/movie/{movie_id}"
     )
